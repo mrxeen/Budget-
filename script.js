@@ -157,9 +157,7 @@ const renderCalendar = () => {
   }
 
   let carryover = 0;
-  let remainingMonthly = baseIncome;
-
-  const monthlyEntries = getMonthlyEntries();
+  let remainingMonthly = available;
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     const dayEntries = monthlyEntries.filter((entry) => entry.day === day);
