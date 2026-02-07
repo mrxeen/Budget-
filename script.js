@@ -5,6 +5,7 @@ const dailyBudgetInput = document.querySelector("#daily-budget");
 const calendar = document.querySelector("#calendar");
 const weekdayRow = document.querySelector("#weekday-row");
 const monthLabel = document.querySelector("#month-label");
+const totalSavingsLabel = document.querySelector("#total-savings");
 const totalIncomeLabel = document.querySelector("#total-income");
 const totalExpensesLabel = document.querySelector("#total-expenses");
 const totalAvailableLabel = document.querySelector("#total-available");
@@ -50,9 +51,36 @@ const getTotals = () => {
   const expenses = entries
     .filter((entry) => entry.type === "expense")
     .reduce((sum, entry) => sum + entry.amount, 0);
-  const available = baseIncome - savings + additionalIncome - expenses;
+  const available = baseIncome + additionalIncome - expenses;
   return { baseIncome, savings, additionalIncome, expenses, available };
 };
+
+const createMemoryStorage = () => {
+  let cache = {};
+  return {
+    getItem: (key) => (key in cache ? cache[key] : null),
+    setItem: (key, value) => {
+      cache[key] = String(value);
+    },
+    removeItem: (key) => {
+      delete cache[key];
+    },
+  };
+};
+
+const getStorage = () => {
+  try {
+    const testKey = "__budget_storage_test__";
+    localStorage.setItem(testKey, "1");
+    localStorage.removeItem(testKey);
+    return localStorage;
+  } catch (error) {
+    console.warn("LocalStorage nicht verfügbar, nutze In-Memory Cache.");
+    return createMemoryStorage();
+  }
+};
+
+const storage = getStorage();
 
 const persistState = () => {
   const payload = {
@@ -61,11 +89,11 @@ const persistState = () => {
     salaryDay: salaryDayInput.value,
     entries,
   };
-  localStorage.setItem(storageKey, JSON.stringify(payload));
+  storage.setItem(storageKey, JSON.stringify(payload));
 };
 
 const restoreState = () => {
-  const raw = localStorage.getItem(storageKey);
+  const raw = storage.getItem(storageKey);
   if (!raw) return;
   try {
     const data = JSON.parse(raw);
@@ -80,15 +108,14 @@ const restoreState = () => {
   }
 };
 
-const getDailyBudget = (baseIncome, savings, daysInMonth) => {
-  const distributable = baseIncome - savings;
-  return daysInMonth > 0 ? distributable / daysInMonth : 0;
+const getDailyBudget = (baseIncome, daysInMonth) => {
+  return daysInMonth > 0 ? baseIncome / daysInMonth : 0;
 };
 
 const renderCalendar = () => {
   const { daysInMonth, label, month, year } = getCurrentMonthInfo();
-  const { baseIncome, savings, available } = getTotals();
-  const dailyBudget = getDailyBudget(baseIncome, savings, daysInMonth);
+  const { baseIncome } = getTotals();
+  const dailyBudget = getDailyBudget(baseIncome, daysInMonth);
   const weekdayLabels = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
   const salaryDay = Number(salaryDayInput.value) || null;
@@ -111,7 +138,7 @@ const renderCalendar = () => {
   }
 
   let carryover = 0;
-  let remainingMonthly = available;
+  let remainingMonthly = baseIncome;
 
   for (let day = 1; day <= daysInMonth; day += 1) {
     const dayEntries = entries.filter((entry) => entry.day === day);
@@ -143,7 +170,10 @@ const renderCalendar = () => {
         ${salaryDay === day ? `<span class="badge">Gehalt</span>` : ""}
       </div>
       <div>
-        <div class="remaining">${formatCurrency(remaining)}</div>
+        <div class="remaining">
+          ${formatCurrency(remaining)}
+          <span class="note">Tages-Rest</span>
+        </div>
         <p class="note">Restbudget Monat: ${formatCurrency(remainingMonthly)}</p>
         ${entryNotes ? `<p class="note">${entryNotes}</p>` : ""}
       </div>
@@ -178,17 +208,20 @@ const renderEntries = () => {
 const updateTotals = () => {
   const { baseIncome, savings, additionalIncome, expenses, available } =
     getTotals();
+  totalSavingsLabel.textContent = formatCurrency(savings);
   totalIncomeLabel.textContent = formatCurrency(baseIncome + additionalIncome);
   totalExpensesLabel.textContent = formatCurrency(expenses);
   totalAvailableLabel.textContent = formatCurrency(available);
-  predictedSavingsLabel.textContent = formatCurrency(savings);
 };
 
 const updateUI = () => {
   updateTotals();
   renderEntries();
   const predictedSavings = renderCalendar();
-  predictedSavingsLabel.textContent = formatCurrency(predictedSavings);
+  const { savings } = getTotals();
+  predictedSavingsLabel.textContent = formatCurrency(
+    savings + predictedSavings
+  );
   persistState();
 };
 

@@ -28,7 +28,7 @@ body {
 
 .top-row {
   display: grid;
-  grid-template-columns: minmax(200px, 1fr) minmax(200px, 1fr) auto;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 16px;
   align-items: end;
   background: white;
@@ -85,7 +85,7 @@ body {
 
 .totals {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 16px;
   text-align: right;
 }
@@ -103,7 +103,27 @@ body {
 .calendar {
   margin-top: 24px;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.weekday-row {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+}
+
+.weekday-row span {
+  text-align: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -126,11 +146,41 @@ body {
 .day-card .remaining {
   font-size: 1.1rem;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
 }
 
 .day-card .note {
   color: var(--muted);
   font-size: 0.8rem;
+}
+
+.day-card .carryover {
+  margin: 0;
+}
+
+.day-card .badge {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(30, 136, 229, 0.12);
+  color: var(--primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.salary-day {
+  border-color: rgba(30, 136, 229, 0.6);
+  box-shadow: 0 8px 18px rgba(30, 136, 229, 0.2);
+}
+
+.empty-slot {
+  background: transparent;
+  border: 1px dashed rgba(216, 222, 233, 0.6);
+  box-shadow: none;
 }
 
 .entries {
@@ -258,5 +308,10 @@ body {
     grid-template-columns: 1fr;
     width: 100%;
     text-align: left;
+  }
+
+  .weekday-row,
+  .calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
