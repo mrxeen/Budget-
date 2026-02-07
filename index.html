@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monatsbudget Kalender</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="top-row">
+      <div class="field">
+        <label for="monthly-income">Monatseinkommen</label>
+        <input id="monthly-income" type="number" min="0" step="0.01" placeholder="z. B. 2500" />
+      </div>
+      <div class="field">
+        <label for="daily-budget">Tagesgeld</label>
+        <input id="daily-budget" type="text" readonly />
+      </div>
+      <button id="open-modal" class="add-button" aria-haspopup="dialog">+</button>
+    </header>
+
+    <section class="summary">
+      <div>
+        <h2>Monatsübersicht</h2>
+        <p id="month-label"></p>
+      </div>
+      <div class="totals">
+        <div>
+          <span>Einnahmen</span>
+          <strong id="total-income">0,00 €</strong>
+        </div>
+        <div>
+          <span>Ausgaben</span>
+          <strong id="total-expenses">0,00 €</strong>
+        </div>
+        <div>
+          <span>Verfügbar</span>
+          <strong id="total-available">0,00 €</strong>
+        </div>
+      </div>
+    </section>
+
+    <section class="calendar" id="calendar"></section>
+
+    <section class="entries">
+      <h3>Wiederkehrende Zahlungen & zusätzliches Einkommen</h3>
+      <ul id="entry-list"></ul>
+    </section>
+  </main>
+
+  <dialog id="entry-modal" class="modal">
+    <form id="entry-form" method="dialog">
+      <header>
+        <h2>Eintrag hinzufügen</h2>
+        <button type="button" id="close-modal" class="text-button">Schließen</button>
+      </header>
+      <div class="modal-body">
+        <label>
+          Art
+          <select id="entry-type">
+            <option value="income">Zusätzliches Einkommen</option>
+            <option value="expense">Wiederkehrende Zahlung</option>
+          </select>
+        </label>
+        <label>
+          Beschreibung
+          <input id="entry-description" type="text" placeholder="z. B. Miete" />
+        </label>
+        <label>
+          Betrag (€)
+          <input id="entry-amount" type="number" min="0" step="0.01" required />
+        </label>
+        <label>
+          Tag im Monat
+          <input id="entry-day" type="number" min="1" max="31" placeholder="z. B. 15" />
+        </label>
+      </div>
+      <footer>
+        <button type="submit" class="primary">Speichern</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="script.js"></script>
+</body>
+</html>
