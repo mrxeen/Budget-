@@ -5,6 +5,7 @@ const dailyBudgetInput = document.querySelector("#daily-budget");
 const calendar = document.querySelector("#calendar");
 const weekdayRow = document.querySelector("#weekday-row");
 const monthLabel = document.querySelector("#month-label");
+const totalSavingsLabel = document.querySelector("#total-savings");
 const totalIncomeLabel = document.querySelector("#total-income");
 const totalExpensesLabel = document.querySelector("#total-expenses");
 const totalAvailableLabel = document.querySelector("#total-available");
@@ -19,6 +20,7 @@ const entryType = document.querySelector("#entry-type");
 const entryDescription = document.querySelector("#entry-description");
 const entryAmount = document.querySelector("#entry-amount");
 const entryDay = document.querySelector("#entry-day");
+const entrySingle = document.querySelector("#entry-single");
 
 const storageKey = "budgetPlannerState";
 const entries = [];
@@ -41,18 +43,63 @@ const getCurrentMonthInfo = () => {
   return { year, month, daysInMonth, label };
 };
 
+const getCurrentYearMonth = () => {
+  const { year, month } = getCurrentMonthInfo();
+  return { year, month };
+};
+
+const isEntryInCurrentMonth = (entry) => {
+  if (entry.frequency !== "single") {
+    return true;
+  }
+  if (entry.year == null || entry.month == null) {
+    return false;
+  }
+  const { year, month } = getCurrentYearMonth();
+  return entry.year === year && entry.month === month;
+};
+
+const getMonthlyEntries = () => entries.filter(isEntryInCurrentMonth);
+
 const getTotals = () => {
   const baseIncome = Number(monthlyIncomeInput.value) || 0;
   const savings = Number(monthlySavingsInput.value) || 0;
-  const additionalIncome = entries
+  const additionalIncome = getMonthlyEntries()
     .filter((entry) => entry.type === "income")
     .reduce((sum, entry) => sum + entry.amount, 0);
-  const expenses = entries
+  const expenses = getMonthlyEntries()
     .filter((entry) => entry.type === "expense")
     .reduce((sum, entry) => sum + entry.amount, 0);
-  const available = baseIncome - savings + additionalIncome - expenses;
+  const available = baseIncome + additionalIncome - expenses;
   return { baseIncome, savings, additionalIncome, expenses, available };
 };
+
+const createMemoryStorage = () => {
+  let cache = {};
+  return {
+    getItem: (key) => (key in cache ? cache[key] : null),
+    setItem: (key, value) => {
+      cache[key] = String(value);
+    },
+    removeItem: (key) => {
+      delete cache[key];
+    },
+  };
+};
+
+const getStorage = () => {
+  try {
+    const testKey = "__budget_storage_test__";
+    localStorage.setItem(testKey, "1");
+    localStorage.removeItem(testKey);
+    return localStorage;
+  } catch (error) {
+    console.warn("LocalStorage nicht verfügbar, nutze In-Memory Cache.");
+    return createMemoryStorage();
+  }
+};
+
+const storage = getStorage();
 
 const persistState = () => {
   const payload = {
@@ -61,11 +108,11 @@ const persistState = () => {
     salaryDay: salaryDayInput.value,
     entries,
   };
-  localStorage.setItem(storageKey, JSON.stringify(payload));
+  storage.setItem(storageKey, JSON.stringify(payload));
 };
 
 const restoreState = () => {
-  const raw = localStorage.getItem(storageKey);
+  const raw = storage.getItem(storageKey);
   if (!raw) return;
   try {
     const data = JSON.parse(raw);
@@ -80,15 +127,14 @@ const restoreState = () => {
   }
 };
 
-const getDailyBudget = (baseIncome, savings, daysInMonth) => {
-  const distributable = baseIncome - savings;
-  return daysInMonth > 0 ? distributable / daysInMonth : 0;
+const getDailyBudget = (baseIncome, daysInMonth) => {
+  return daysInMonth > 0 ? baseIncome / daysInMonth : 0;
 };
 
 const renderCalendar = () => {
   const { daysInMonth, label, month, year } = getCurrentMonthInfo();
-  const { baseIncome, savings, available } = getTotals();
-  const dailyBudget = getDailyBudget(baseIncome, savings, daysInMonth);
+  const { baseIncome } = getTotals();
+  const dailyBudget = getDailyBudget(baseIncome, daysInMonth);
   const weekdayLabels = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
   const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
   const salaryDay = Number(salaryDayInput.value) || null;
@@ -111,10 +157,12 @@ const renderCalendar = () => {
   }
 
   let carryover = 0;
-  let remainingMonthly = available;
+  let remainingMonthly = baseIncome;
+
+  const monthlyEntries = getMonthlyEntries();
 
   for (let day = 1; day <= daysInMonth; day += 1) {
-    const dayEntries = entries.filter((entry) => entry.day === day);
+    const dayEntries = monthlyEntries.filter((entry) => entry.day === day);
     const dailyAdjustment = dayEntries.reduce((sum, entry) => {
       return entry.type === "income" ? sum + entry.amount : sum - entry.amount;
     }, 0);
@@ -124,6 +172,7 @@ const renderCalendar = () => {
 
     const card = document.createElement("article");
     card.className = "day-card";
+    card.dataset.day = String(day);
     if (salaryDay === day) {
       card.classList.add("salary-day");
     }
@@ -143,7 +192,10 @@ const renderCalendar = () => {
         ${salaryDay === day ? `<span class="badge">Gehalt</span>` : ""}
       </div>
       <div>
-        <div class="remaining">${formatCurrency(remaining)}</div>
+        <div class="remaining">
+          ${formatCurrency(remaining)}
+          <span class="note">Tages-Rest</span>
+        </div>
         <p class="note">Restbudget Monat: ${formatCurrency(remainingMonthly)}</p>
         ${entryNotes ? `<p class="note">${entryNotes}</p>` : ""}
       </div>
@@ -158,10 +210,14 @@ const renderEntries = () => {
   entryList.innerHTML = "";
   entries.forEach((entry, index) => {
     const li = document.createElement("li");
+    const frequencyLabel =
+      entry.frequency === "single" ? "Einmalig" : "Wiederkehrend";
     li.innerHTML = `
       <div>
         <strong>${entry.description || "Ohne Beschreibung"}</strong>
-        <div class="note">Tag ${entry.day || "-"}</div>
+        <div class="note">
+          Tag ${entry.day || "-"} · ${frequencyLabel}
+        </div>
       </div>
       <div>
         <span class="pill ${entry.type}">${
@@ -178,17 +234,20 @@ const renderEntries = () => {
 const updateTotals = () => {
   const { baseIncome, savings, additionalIncome, expenses, available } =
     getTotals();
+  totalSavingsLabel.textContent = formatCurrency(savings);
   totalIncomeLabel.textContent = formatCurrency(baseIncome + additionalIncome);
   totalExpensesLabel.textContent = formatCurrency(expenses);
   totalAvailableLabel.textContent = formatCurrency(available);
-  predictedSavingsLabel.textContent = formatCurrency(savings);
 };
 
 const updateUI = () => {
   updateTotals();
   renderEntries();
   const predictedSavings = renderCalendar();
-  predictedSavingsLabel.textContent = formatCurrency(predictedSavings);
+  const { savings } = getTotals();
+  predictedSavingsLabel.textContent = formatCurrency(
+    savings + predictedSavings
+  );
   persistState();
 };
 
@@ -197,6 +256,8 @@ monthlySavingsInput.addEventListener("input", updateUI);
 salaryDayInput.addEventListener("input", updateUI);
 
 openModalButton.addEventListener("click", () => {
+  entryForm.reset();
+  entrySingle.checked = false;
   modal.showModal();
 });
 
@@ -210,11 +271,16 @@ entryForm.addEventListener("submit", (event) => {
   if (!amount) {
     return;
   }
+  const isSingle = entrySingle.checked;
+  const { year, month } = getCurrentYearMonth();
   entries.push({
     type: entryType.value,
     description: entryDescription.value.trim(),
     amount,
     day: Number(entryDay.value) || null,
+    frequency: isSingle ? "single" : "recurring",
+    year: isSingle ? year : null,
+    month: isSingle ? month : null,
   });
   entryForm.reset();
   modal.close();
@@ -227,6 +293,17 @@ entryList.addEventListener("click", (event) => {
   const index = Number(button.dataset.index);
   entries.splice(index, 1);
   updateUI();
+});
+
+calendar.addEventListener("click", (event) => {
+  const card = event.target.closest(".day-card");
+  if (!card || card.classList.contains("empty-slot")) return;
+  const day = Number(card.dataset.day);
+  if (!day) return;
+  entryForm.reset();
+  entryDay.value = String(day);
+  entrySingle.checked = true;
+  modal.showModal();
 });
 
 restoreState();
