@@ -44,6 +44,17 @@ body {
   font-weight: 500;
 }
 
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.checkbox-field input {
+  width: auto;
+}
+
 .field input {
   padding: 10px 12px;
   border-radius: 10px;
@@ -136,6 +147,13 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.day-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
 }
 
 .day-card h4 {
@@ -155,32 +173,6 @@ body {
 .day-card .note {
   color: var(--muted);
   font-size: 0.8rem;
-}
-
-.day-card .carryover {
-  margin: 0;
-}
-
-.day-card .badge {
-  display: inline-block;
-  margin-top: 6px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(30, 136, 229, 0.12);
-  color: var(--primary);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.salary-day {
-  border-color: rgba(30, 136, 229, 0.6);
-  box-shadow: 0 8px 18px rgba(30, 136, 229, 0.2);
-}
-
-.empty-slot {
-  background: transparent;
-  border: 1px dashed rgba(216, 222, 233, 0.6);
-  box-shadow: none;
 }
 
 .entries {

@@ -20,6 +20,7 @@ const entryType = document.querySelector("#entry-type");
 const entryDescription = document.querySelector("#entry-description");
 const entryAmount = document.querySelector("#entry-amount");
 const entryDay = document.querySelector("#entry-day");
+const entrySingle = document.querySelector("#entry-single");
 
 const storageKey = "budgetPlannerState";
 const entries = [];
@@ -42,13 +43,31 @@ const getCurrentMonthInfo = () => {
   return { year, month, daysInMonth, label };
 };
 
+const getCurrentYearMonth = () => {
+  const { year, month } = getCurrentMonthInfo();
+  return { year, month };
+};
+
+const isEntryInCurrentMonth = (entry) => {
+  if (entry.frequency !== "single") {
+    return true;
+  }
+  if (entry.year == null || entry.month == null) {
+    return false;
+  }
+  const { year, month } = getCurrentYearMonth();
+  return entry.year === year && entry.month === month;
+};
+
+const getMonthlyEntries = () => entries.filter(isEntryInCurrentMonth);
+
 const getTotals = () => {
   const baseIncome = Number(monthlyIncomeInput.value) || 0;
   const savings = Number(monthlySavingsInput.value) || 0;
-  const additionalIncome = entries
+  const additionalIncome = getMonthlyEntries()
     .filter((entry) => entry.type === "income")
     .reduce((sum, entry) => sum + entry.amount, 0);
-  const expenses = entries
+  const expenses = getMonthlyEntries()
     .filter((entry) => entry.type === "expense")
     .reduce((sum, entry) => sum + entry.amount, 0);
   const available = baseIncome + additionalIncome - expenses;
@@ -138,10 +157,10 @@ const renderCalendar = () => {
   }
 
   let carryover = 0;
-  let remainingMonthly = baseIncome;
+  let remainingMonthly = available;
 
   for (let day = 1; day <= daysInMonth; day += 1) {
-    const dayEntries = entries.filter((entry) => entry.day === day);
+    const dayEntries = monthlyEntries.filter((entry) => entry.day === day);
     const dailyAdjustment = dayEntries.reduce((sum, entry) => {
       return entry.type === "income" ? sum + entry.amount : sum - entry.amount;
     }, 0);
@@ -151,6 +170,7 @@ const renderCalendar = () => {
 
     const card = document.createElement("article");
     card.className = "day-card";
+    card.dataset.day = String(day);
     if (salaryDay === day) {
       card.classList.add("salary-day");
     }
@@ -188,10 +208,14 @@ const renderEntries = () => {
   entryList.innerHTML = "";
   entries.forEach((entry, index) => {
     const li = document.createElement("li");
+    const frequencyLabel =
+      entry.frequency === "single" ? "Einmalig" : "Wiederkehrend";
     li.innerHTML = `
       <div>
         <strong>${entry.description || "Ohne Beschreibung"}</strong>
-        <div class="note">Tag ${entry.day || "-"}</div>
+        <div class="note">
+          Tag ${entry.day || "-"} · ${frequencyLabel}
+        </div>
       </div>
       <div>
         <span class="pill ${entry.type}">${
@@ -230,6 +254,8 @@ monthlySavingsInput.addEventListener("input", updateUI);
 salaryDayInput.addEventListener("input", updateUI);
 
 openModalButton.addEventListener("click", () => {
+  entryForm.reset();
+  entrySingle.checked = false;
   modal.showModal();
 });
 
@@ -243,11 +269,16 @@ entryForm.addEventListener("submit", (event) => {
   if (!amount) {
     return;
   }
+  const isSingle = entrySingle.checked;
+  const { year, month } = getCurrentYearMonth();
   entries.push({
     type: entryType.value,
     description: entryDescription.value.trim(),
     amount,
     day: Number(entryDay.value) || null,
+    frequency: isSingle ? "single" : "recurring",
+    year: isSingle ? year : null,
+    month: isSingle ? month : null,
   });
   entryForm.reset();
   modal.close();
@@ -260,6 +291,17 @@ entryList.addEventListener("click", (event) => {
   const index = Number(button.dataset.index);
   entries.splice(index, 1);
   updateUI();
+});
+
+calendar.addEventListener("click", (event) => {
+  const card = event.target.closest(".day-card");
+  if (!card || card.classList.contains("empty-slot")) return;
+  const day = Number(card.dataset.day);
+  if (!day) return;
+  entryForm.reset();
+  entryDay.value = String(day);
+  entrySingle.checked = true;
+  modal.showModal();
 });
 
 restoreState();
