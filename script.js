@@ -21,6 +21,7 @@ const entryAmount = document.querySelector("#entry-amount");
 const entryDay = document.querySelector("#entry-day");
 
 const storageKey = "budgetPlannerState";
+let memoryStorage = {};
 const entries = [];
 
 const formatCurrency = (value) =>
@@ -54,6 +55,25 @@ const getTotals = () => {
   return { baseIncome, savings, additionalIncome, expenses, available };
 };
 
+const getStorage = () => {
+  try {
+    const testKey = "__budget_test__";
+    localStorage.setItem(testKey, "ok");
+    localStorage.removeItem(testKey);
+    return localStorage;
+  } catch (error) {
+    return {
+      getItem: (key) => memoryStorage[key] ?? null,
+      setItem: (key, value) => {
+        memoryStorage[key] = value;
+      },
+      removeItem: (key) => {
+        delete memoryStorage[key];
+      },
+    };
+  }
+};
+
 const persistState = () => {
   const payload = {
     monthlyIncome: monthlyIncomeInput.value,
@@ -61,11 +81,13 @@ const persistState = () => {
     salaryDay: salaryDayInput.value,
     entries,
   };
-  localStorage.setItem(storageKey, JSON.stringify(payload));
+  const storage = getStorage();
+  storage.setItem(storageKey, JSON.stringify(payload));
 };
 
 const restoreState = () => {
-  const raw = localStorage.getItem(storageKey);
+  const storage = getStorage();
+  const raw = storage.getItem(storageKey);
   if (!raw) return;
   try {
     const data = JSON.parse(raw);
